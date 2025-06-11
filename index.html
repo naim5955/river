@@ -1,28 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Padma • Gomti • Jamuna  NDVI/NDWI Viewer</title>
-
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<style>
-  body, html { height: 100%; margin: 0; }
-  #map { height: 90vh; }
-  .controls {
-    position: absolute; top: 10px; left: 10px; z-index: 1000;
-    background: #fff; padding: 10px; border-radius: 6px;
-    box-shadow: 0 0 8px rgba(0,0,0,.25); font-family: Arial, sans-serif;
-  }
-  select, button { padding: 5px 8px; margin: 0 6px 6px 0; }
-  button { cursor: pointer; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>River NDVI/NDWI Viewer</title>
+  <style>
+    body, html { height: 100%; margin: 0; padding: 0; }
+    #map { height: 90vh; }
+    .controls {
+      padding: 10px;
+      background: white;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      border-radius: 5px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.3);
+      font-family: Arial, sans-serif;
+    }
+    select, button {
+      margin: 0 5px 5px 0;
+      padding: 5px 8px;
+    }
+    button { cursor: pointer; }
+  </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
 
-<!-- Control panel -->
 <div class="controls">
   <label>River:
     <select id="river-select">
@@ -34,8 +39,6 @@
   <label>Year:
     <select id="year-select">
       <option value="2022">2022</option>
-      <option value="2023">2023</option>
-      <option value="2024">2024</option>
     </select>
   </label>
   <label>Quarter:
@@ -55,62 +58,60 @@
   <button id="load-btn">Load</button>
 </div>
 
-<!-- Map container -->
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-  // ---------- Base map ----------
-  const map = L.map('map').setView([23.78, 89.7], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  const map = L.map("map").setView([23.78, 89.70], 10);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  // ---------- Controls ----------
-  const riverSel   = document.getElementById('river-select');
-  const yearSel    = document.getElementById('year-select');
-  const quarterSel = document.getElementById('quarter-select');
-  const indexSel   = document.getElementById('index-select');
-  const loadBtn    = document.getElementById('load-btn');
-
-  // ---------- Bounds data ----------
-  let boundsData = {};
-  fetch('data/bounds.json')
-    .then(r => r.json())
-    .then(j => boundsData = j)
-    .catch(e => alert('⚠️ Failed to load bounds.json'));
-
   let currentOverlay = null;
+  let boundsData = {};
+
+  const riverSel   = document.getElementById("river-select");
+  const yearSel    = document.getElementById("year-select");
+  const quarterSel = document.getElementById("quarter-select");
+  const indexSel   = document.getElementById("index-select");
+  const loadBtn    = document.getElementById("load-btn");
 
   function buildFilename() {
-    // e.g. "Gomti_Q2_2022_NDVI.png"
     return `${riverSel.value}_${quarterSel.value}_${yearSel.value}_${indexSel.value}.png`;
   }
 
-  function loadOverlay() {
+  function updateOverlay() {
+    const river = riverSel.value;
     const filename = buildFilename();
+    const boundsFile = `data/${river}/bounds.json`;
 
-    // Check bounds
-    if (!boundsData[filename]) {
-      alert('No bounds found for ' + filename);
-      return;
-    }
+    fetch(boundsFile)
+      .then(res => res.json())
+      .then(json => {
+        boundsData = json;
 
-    const [minLon, minLat, maxLon, maxLat] = boundsData[filename];
-    const bounds = [[minLat, minLon], [maxLat, maxLon]];
-    const imgPath = `data/${riverSel.value}/${filename}`;
+        if (!boundsData[filename]) {
+          alert("No bounds found for " + filename);
+          return;
+        }
 
-    // Remove previous layer
-    if (currentOverlay) map.removeLayer(currentOverlay);
+        if (currentOverlay) map.removeLayer(currentOverlay);
 
-    currentOverlay = L.imageOverlay(imgPath, bounds, {opacity: 0.7}).addTo(map);
-    map.fitBounds(bounds);
+        const [minLon, minLat, maxLon, maxLat] = boundsData[filename];
+        const bounds = [[minLat, minLon], [maxLat, maxLon]];
+        const imagePath = `data/${river}/${filename}`;
+
+        currentOverlay = L.imageOverlay(imagePath, bounds, { opacity: 0.7 }).addTo(map);
+        map.fitBounds(bounds);
+      })
+      .catch(err => {
+        console.error("Error loading bounds.json:", err);
+        alert("Could not load bounds for " + river);
+      });
   }
 
-  loadBtn.addEventListener('click', loadOverlay);
+  loadBtn.addEventListener("click", updateOverlay);
 </script>
 </body>
 </html>
