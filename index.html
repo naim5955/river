@@ -2,29 +2,143 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Padma NDVI/NDWI Viewer</title>
+  <title>Padma River NDVI / NDWI Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css" />
+  
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-sA+oXp8M5NKufNm2Ipi/xB/nM/9B1FkFkTv7a0wqgCk="
+    crossorigin=""
+  />
+
+  <style>
+    /* Basic reset */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Map container takes most of viewport height */
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+
+    /* Controls container */
+    .controls {
+      padding: 10px;
+      background-color: #f3f3f3;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    select, button {
+      font-size: 1rem;
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      background: white;
+    }
+
+    button:hover {
+      background: #0078ff;
+      color: white;
+      border-color: #0078ff;
+    }
+  </style>
 </head>
 <body>
-  <h2>Padma River NDVI/NDWI Viewer</h2>
   <div class="controls">
+    <label for="quarter">Quarter:</label>
     <select id="quarter">
       <option value="Q1">Q1</option>
       <option value="Q2">Q2</option>
       <option value="Q3">Q3</option>
       <option value="Q4">Q4</option>
     </select>
+
+    <label for="indexType">Index:</label>
     <select id="indexType">
       <option value="NDVI">NDVI</option>
       <option value="NDWI">NDWI</option>
     </select>
+
     <button onclick="updateLayer()">Show</button>
   </div>
+
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="script.js"></script>
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-oMsE+SA9JqN+1sFvH4mIu7qzqI8t3oLlFqZ9iS0LPaM="
+    crossorigin=""
+  ></script>
+
+  <script>
+    // Initialize the Leaflet map
+    const map = L.map('map').setView([23.5, 89.5], 9);
+
+    // Add OpenStreetMap baselayer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // This should come from your JSON bounding box data you generated
+    // Format: filename: [minLon, minLat, maxLon, maxLat]
+    const boundsData = {
+      "Padma_Q1_2022_NDVI.png": [89.2, 23.2, 89.8, 23.8],
+      "Padma_Q1_2022_NDWI.png": [89.2, 23.2, 89.8, 23.8],
+      "Padma_Q2_2022_NDVI.png": [89.2, 23.2, 89.8, 23.8],
+      "Padma_Q2_2022_NDWI.png": [89.2, 23.2, 89.8, 23.8],
+      "Padma_Q3_2022_NDVI.png": [89.2, 23.2, 89.8, 23.8],
+      "Padma_Q3_2022_NDWI.png": [89.2, 23.2, 89.8, 23.8],
+      "Padma_Q4_2022_NDVI.png": [89.2, 23.2, 89.8, 23.8],
+      "Padma_Q4_2022_NDWI.png": [89.2, 23.2, 89.8, 23.8],
+    };
+
+    let currentOverlay = null;
+
+    function updateLayer() {
+      const quarter = document.getElementById('quarter').value;
+      const index = document.getElementById('indexType').value;
+      const fileName = `Padma_${quarter}_2022_${index}.png`;
+      const bounds = boundsData[fileName];
+
+      if (!bounds) {
+        alert(`Bounds not found for file: ${fileName}`);
+        return;
+      }
+
+      if (currentOverlay) {
+        map.removeLayer(currentOverlay);
+      }
+
+      currentOverlay = L.imageOverlay(
+        `data/${fileName}`,
+        [
+          [bounds[1], bounds[0]], // [southWest lat, lon]
+          [bounds[3], bounds[2]]  // [northEast lat, lon]
+        ],
+        { opacity: 0.8 }
+      ).addTo(map);
+
+      map.fitBounds([
+        [bounds[1], bounds[0]],
+        [bounds[3], bounds[2]],
+      ]);
+    }
+
+    // Load default layer on page load
+    window.onload = updateLayer;
+  </script>
 </body>
 </html>
