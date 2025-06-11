@@ -18,10 +18,11 @@
     box-shadow: 0 0 8px rgba(0,0,0,0.3);
     font-family: Arial, sans-serif;
   }
-  select {
+  select, button {
     margin: 0 5px 5px 0;
-    padding: 5px;
+    padding: 5px 8px;
   }
+  button { cursor: pointer; }
 </style>
 <link
   rel="stylesheet"
@@ -29,6 +30,7 @@
 />
 </head>
 <body>
+
 <div class="controls">
   <label>Year:
     <select id="year-select">
@@ -49,85 +51,61 @@
       <option value="NDWI">NDWI</option>
     </select>
   </label>
+
+  <!-- NEW LOAD BUTTON -->
+  <button id="load-btn">Load</button>
 </div>
 
 <div id="map"></div>
 
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  crossorigin=""
-></script>
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
+  // Base map
   const map = L.map("map").setView([23.78, 89.70], 13);
-
-  L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-    }
-  ).addTo(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
 
   let currentOverlay = null;
-
-  // Load bounds JSON from /data/bounds.json
   let boundsData = {};
+
+  // Load bounds.json once
   fetch("data/bounds.json")
-    .then((res) => res.json())
-    .then((data) => {
-      boundsData = data;
-      console.log("Bounds loaded:", boundsData);
-      updateOverlay();
-    })
-    .catch((e) => {
-      console.error("Error loading bounds.json:", e);
-    });
+    .then(res => res.json())
+    .then(json => { boundsData = json; })
+    .catch(err => console.error("Error loading bounds.json:", err));
 
-  const yearSelect = document.getElementById("year-select");
-  const quarterSelect = document.getElementById("quarter-select");
-  const indexSelect = document.getElementById("index-select");
+  const yearSel    = document.getElementById("year-select");
+  const quarterSel = document.getElementById("quarter-select");
+  const indexSel   = document.getElementById("index-select");
+  const loadBtn    = document.getElementById("load-btn");
 
-  // Build filename exactly like JSON keys:
   function buildFilename() {
-    const year = yearSelect.value;
-    const quarter = quarterSelect.value;
-    const index = indexSelect.value;
-    return `Padma_${quarter}_${year}_${index}.png`;
+    return `Padma_${quarterSel.value}_${yearSel.value}_${indexSel.value}.png`;
   }
 
   function updateOverlay() {
-    if (currentOverlay) {
-      map.removeLayer(currentOverlay);
-      currentOverlay = null;
-    }
+    if (!boundsData) return;
 
     const filename = buildFilename();
-    console.log("Looking for file in bounds:", filename);
-
-    if (!(filename in boundsData)) {
-      console.error("No bounds found for:", filename);
+    if (!boundsData[filename]) {
+      alert("No bounds found for " + filename);
       return;
     }
 
-    const b = boundsData[filename]; // [west, south, east, north]
+    // Remove old overlay
+    if (currentOverlay) map.removeLayer(currentOverlay);
 
-    const imageUrl = `data/${filename}`;
-
-    const bounds = [
-      [b[1], b[0]], // SouthWest lat,lng
-      [b[3], b[2]], // NorthEast lat,lng
-    ];
-
-    currentOverlay = L.imageOverlay(imageUrl, bounds, { opacity: 0.7 }).addTo(map);
-
-    // Fit map to image bounds
+    const [minLon, minLat, maxLon, maxLat] = boundsData[filename];
+    const bounds = [[minLat, minLon], [maxLat, maxLon]];
+    currentOverlay = L.imageOverlay(`data/${filename}`, bounds, {opacity: 0.7})
+                      .addTo(map);
     map.fitBounds(bounds);
   }
 
-  yearSelect.addEventListener("change", updateOverlay);
-  quarterSelect.addEventListener("change", updateOverlay);
-  indexSelect.addEventListener("change", updateOverlay);
+  // Only show layer after user clicks "Load"
+  loadBtn.addEventListener("click", updateOverlay);
 </script>
 </body>
 </html>
