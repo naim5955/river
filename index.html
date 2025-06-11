@@ -3,10 +3,25 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Basic Leaflet Map Test</title>
+<title>Padma River NDVI/NDWI Viewer</title>
 <style>
-  #map { height: 100vh; width: 100vw; margin: 0; padding: 0; }
-  body, html { margin: 0; padding: 0; height: 100%; }
+  body, html { height: 100%; margin: 0; padding: 0; }
+  #map { height: 90vh; }
+  .controls {
+    padding: 10px;
+    background: white;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    border-radius: 5px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+    font-family: Arial, sans-serif;
+  }
+  select {
+    margin: 0 5px 5px 0;
+    padding: 5px;
+  }
 </style>
 <link
   rel="stylesheet"
@@ -14,19 +29,105 @@
 />
 </head>
 <body>
+<div class="controls">
+  <label>Year:
+    <select id="year-select">
+      <option value="2022">2022</option>
+    </select>
+  </label>
+  <label>Quarter:
+    <select id="quarter-select">
+      <option value="Q1">Q1</option>
+      <option value="Q2">Q2</option>
+      <option value="Q3">Q3</option>
+      <option value="Q4">Q4</option>
+    </select>
+  </label>
+  <label>Index:
+    <select id="index-select">
+      <option value="NDVI">NDVI</option>
+      <option value="NDWI">NDWI</option>
+    </select>
+  </label>
+</div>
+
 <div id="map"></div>
 
 <script
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   crossorigin=""
 ></script>
-<script>
-  const map = L.map('map').setView([23.78, 89.70], 12);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(map);
+<script>
+  const map = L.map("map").setView([23.78, 89.70], 13);
+
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors',
+    }
+  ).addTo(map);
+
+  let currentOverlay = null;
+
+  // Load bounds JSON from /data/bounds.json
+  let boundsData = {};
+  fetch("data/bounds.json")
+    .then((res) => res.json())
+    .then((data) => {
+      boundsData = data;
+      console.log("Bounds loaded:", boundsData);
+      updateOverlay();
+    })
+    .catch((e) => {
+      console.error("Error loading bounds.json:", e);
+    });
+
+  const yearSelect = document.getElementById("year-select");
+  const quarterSelect = document.getElementById("quarter-select");
+  const indexSelect = document.getElementById("index-select");
+
+  // Build filename exactly like JSON keys:
+  function buildFilename() {
+    const year = yearSelect.value;
+    const quarter = quarterSelect.value;
+    const index = indexSelect.value;
+    return `Padma_${quarter}_${year}_${index}.png`;
+  }
+
+  function updateOverlay() {
+    if (currentOverlay) {
+      map.removeLayer(currentOverlay);
+      currentOverlay = null;
+    }
+
+    const filename = buildFilename();
+    console.log("Looking for file in bounds:", filename);
+
+    if (!(filename in boundsData)) {
+      console.error("No bounds found for:", filename);
+      return;
+    }
+
+    const b = boundsData[filename]; // [west, south, east, north]
+
+    const imageUrl = `data/${filename}`;
+
+    const bounds = [
+      [b[1], b[0]], // SouthWest lat,lng
+      [b[3], b[2]], // NorthEast lat,lng
+    ];
+
+    currentOverlay = L.imageOverlay(imageUrl, bounds, { opacity: 0.7 }).addTo(map);
+
+    // Fit map to image bounds
+    map.fitBounds(bounds);
+  }
+
+  yearSelect.addEventListener("change", updateOverlay);
+  quarterSelect.addEventListener("change", updateOverlay);
+  indexSelect.addEventListener("change", updateOverlay);
 </script>
 </body>
 </html>
