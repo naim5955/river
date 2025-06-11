@@ -35,6 +35,8 @@
   <label>Year:
     <select id="year-select">
       <option value="2022">2022</option>
+      <option value="2023">2023</option>
+      <option value="2024">2024</option>
     </select>
   </label>
   <label>Quarter:
@@ -52,7 +54,6 @@
     </select>
   </label>
 
-  <!-- NEW LOAD BUTTON -->
   <button id="load-btn">Load</button>
 </div>
 
@@ -60,7 +61,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
-  // Base map
   const map = L.map("map").setView([23.78, 89.70], 13);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -70,7 +70,6 @@
   let currentOverlay = null;
   let boundsData = {};
 
-  // Load bounds.json once
   fetch("data/bounds.json")
     .then(res => res.json())
     .then(json => { boundsData = json; })
@@ -86,25 +85,22 @@
   }
 
   function updateOverlay() {
-    if (!boundsData) return;
-
     const filename = buildFilename();
+
     if (!boundsData[filename]) {
       alert("No bounds found for " + filename);
       return;
     }
 
-    // Remove old overlay
     if (currentOverlay) map.removeLayer(currentOverlay);
 
     const [minLon, minLat, maxLon, maxLat] = boundsData[filename];
     const bounds = [[minLat, minLon], [maxLat, maxLon]];
-    currentOverlay = L.imageOverlay(`data/${filename}`, bounds, {opacity: 0.7})
-                      .addTo(map);
+
+    currentOverlay = L.imageOverlay(`data/${filename}`, bounds, { opacity: 0.7 }).addTo(map);
     map.fitBounds(bounds);
   }
 
-  // Only show layer after user clicks "Load"
   loadBtn.addEventListener("click", updateOverlay);
 </script>
 </body>
