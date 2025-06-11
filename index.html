@@ -1,98 +1,143 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Padma River NDVI/NDWI Viewer</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-sA+3VbQ6ZLoPVVqgCZRLY5i03wt7kG8p6vG4x0xQ3DA="
+    crossorigin=""
+  />
   <style>
-    body, html { margin:0; padding:0; height:100%; }
-    #map { height: 90vh; width: 100%; }
-    #controls { padding: 10px; background: #f0f0f0; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      width: 100vw;
+      height: 90vh;
+    }
+    #controls {
+      padding: 10px;
+      background: #f4f4f4;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+    select {
+      padding: 5px;
+      font-size: 1rem;
+    }
+    label {
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
+  <div id="controls">
+    <label for="yearSelect">Year:</label>
+    <select id="yearSelect">
+      <option value="2022" selected>2022</option>
+      <!-- Add more years if needed -->
+    </select>
 
-<div id="controls">
-  Year:
-  <select id="year"><option value="2022">2022</option></select>
+    <label for="quarterSelect">Quarter:</label>
+    <select id="quarterSelect">
+      <option value="Q1" selected>Q1</option>
+      <option value="Q2">Q2</option>
+      <option value="Q3">Q3</option>
+      <option value="Q4">Q4</option>
+    </select>
 
-  Quarter:
-  <select id="quarter">
-    <option value="Q1">Q1</option>
-    <option value="Q2">Q2</option>
-    <option value="Q3">Q3</option>
-    <option value="Q4">Q4</option>
-  </select>
+    <label for="indexSelect">Index:</label>
+    <select id="indexSelect">
+      <option value="NDVI" selected>NDVI</option>
+      <option value="NDWI">NDWI</option>
+    </select>
+  </div>
 
-  Index:
-  <select id="index">
-    <option value="NDVI">NDVI</option>
-    <option value="NDWI">NDWI</option>
-  </select>
+  <div id="map"></div>
 
-  <button id="loadBtn">Load Image</button>
-</div>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-o1HmHS+MT1pRoPP9zFAL6LVbFkQPN9kTz0E16vOJtnw="
+    crossorigin=""
+  ></script>
 
-<div id="map"></div>
+  <script>
+    // Initialize map centered on Padma river approximate center
+    const map = L.map('map').setView([23.78, 89.7], 12);
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  const map = L.map('map').setView([23.78, 89.7], 11);
+    // Add OpenStreetMap basemap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+    // Elements
+    const yearSelect = document.getElementById('yearSelect');
+    const quarterSelect = document.getElementById('quarterSelect');
+    const indexSelect = document.getElementById('indexSelect');
 
-  let boundsData = null;
-  let currentOverlay = null;
+    let boundsData = null;
+    let currentOverlay = null;
 
-  // Load bounds.json dynamically
-  fetch('data/bounds.json')
-    .then(response => response.json())
-    .then(data => {
-      boundsData = data;
-      console.log('Bounds data loaded', boundsData);
-    })
-    .catch(err => {
-      alert("Failed to load bounds.json: " + err);
-    });
+    // Load bounds.json
+    fetch('data/bounds.json')
+      .then((res) => res.json())
+      .then((data) => {
+        boundsData = data;
+        updateOverlay();
+      })
+      .catch((e) => {
+        alert('Failed to load bounds.json: ' + e);
+      });
 
-  document.getElementById('loadBtn').addEventListener('click', () => {
-    if (!boundsData) {
-      alert("Bounds data not loaded yet");
-      return;
+    // Build filename from selections
+    function buildFilename() {
+      const year = yearSelect.value;
+      const quarter = quarterSelect.value;
+      const index = indexSelect.value;
+      return `Padma_${quarter}_${year}_${index}.png`;
     }
 
-    const year = document.getElementById('year').value;
-    const quarter = document.getElementById('quarter').value;
-    const index = document.getElementById('index').value;
+    // Update overlay on map
+    function updateOverlay() {
+      if (!boundsData) return;
 
-    const filename = `data/Padma_${quarter}_${year}_${index}.png`;
+      const filename = buildFilename();
 
-    if (!(filename in boundsData)) {
-      alert("No bounds found for " + filename);
-      return;
+      // Remove old overlay if exists
+      if (currentOverlay) {
+        map.removeLayer(currentOverlay);
+        currentOverlay = null;
+      }
+
+      // Get bounds array from JSON: [lng_min, lat_min, lng_max, lat_max]
+      const b = boundsData[filename];
+
+      if (!b) {
+        alert('Bounds not found for ' + filename);
+        return;
+      }
+
+      // Leaflet expects [[lat_min, lng_min], [lat_max, lng_max]]
+      const bounds = [
+        [b[1], b[0]],
+        [b[3], b[2]],
+      ];
+
+      currentOverlay = L.imageOverlay(`data/${filename}`, bounds).addTo(map);
+
+      map.fitBounds(bounds);
     }
 
-    // Remove old overlay
-    if (currentOverlay) {
-      map.removeLayer(currentOverlay);
-      currentOverlay = null;
-    }
-
-    const b = boundsData[filename];
-    // b = [lng_min, lat_min, lng_max, lat_max]
-    const bounds = [
-      [b[1], b[0]],  // [lat_min, lng_min]
-      [b[3], b[2]]   // [lat_max, lng_max]
-    ];
-
-    currentOverlay = L.imageOverlay(filename, bounds).addTo(map);
-    map.fitBounds(bounds);
-  });
-</script>
-
+    // Event listeners for dropdown changes
+    yearSelect.addEventListener('change', updateOverlay);
+    quarterSelect.addEventListener('change', updateOverlay);
+    indexSelect.addEventListener('change', updateOverlay);
+  </script>
 </body>
 </html>
