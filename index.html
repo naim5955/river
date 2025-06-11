@@ -3,19 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>River NDVI/NDWI Viewer</title>
+<title>Basic Leaflet Map Test</title>
 <style>
-  body, html { margin:0; padding:0; height:100%; }
-  #map { width: 100%; height: 90vh; }
-  #controls {
-    padding: 10px;
-    background: #f0f0f0;
-    font-family: Arial, sans-serif;
-  }
-  select {
-    margin-right: 10px;
-    padding: 5px;
-  }
+  #map { height: 100vh; width: 100vw; margin: 0; padding: 0; }
+  body, html { margin: 0; padding: 0; height: 100%; }
 </style>
 <link
   rel="stylesheet"
@@ -23,98 +14,19 @@
 />
 </head>
 <body>
-<div id="controls">
-  <select id="yearSelect">
-    <option value="2022">2022</option>
-    <!-- Add other years if needed -->
-  </select>
-  <select id="quarterSelect">
-    <option value="Q1">Q1</option>
-    <option value="Q2">Q2</option>
-    <option value="Q3">Q3</option>
-    <option value="Q4">Q4</option>
-  </select>
-  <select id="indexSelect">
-    <option value="NDVI">NDVI</option>
-    <option value="NDWI">NDWI</option>
-  </select>
-</div>
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  crossorigin=""
+></script>
 <script>
-  // Base layers
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  const map = L.map('map').setView([23.78, 89.70], 12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors',
-  });
-
-  const satellite = L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 19,
-    attribution:
-      'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-  });
-
-  // Initialize map with OSM default
-  const map = L.map('map', {
-    center: [23.78, 89.70],
-    zoom: 12,
-    layers: [osm],
-  });
-
-  // Basemap toggle control
-  const baseMaps = {
-    "OpenStreetMap": osm,
-    "Satellite": satellite,
-  };
-  L.control.layers(baseMaps).addTo(map);
-
-  // Load bounds from JSON for image overlay placement
-  let boundsData = {};
-  fetch('data/bounds.json')
-    .then(response => response.json())
-    .then(data => {
-      boundsData = data;
-      updateOverlay();
-    })
-    .catch(() => alert('Failed to load bounds.json'));
-
-  let currentOverlay = null;
-
-  // Update overlay function
-  function updateOverlay() {
-    const year = document.getElementById('yearSelect').value;
-    const quarter = document.getElementById('quarterSelect').value;
-    const index = document.getElementById('indexSelect').value;
-    const filename = `Padma_${quarter}_${year}_${index}.png`;
-
-    if (!(filename in boundsData)) {
-      alert('No bounds found for ' + filename);
-      return;
-    }
-
-    const bbox = boundsData[filename]; // [minLon, minLat, maxLon, maxLat]
-    const imgBounds = [
-      [bbox[1], bbox[0]], // SW corner (lat, lon)
-      [bbox[3], bbox[2]], // NE corner (lat, lon)
-    ];
-
-    const imgUrl = `data/${filename}`;
-
-    // Remove previous overlay if exists
-    if (currentOverlay) {
-      map.removeLayer(currentOverlay);
-    }
-
-    currentOverlay = L.imageOverlay(imgUrl, imgBounds, {opacity: 0.7}).addTo(map);
-    map.fitBounds(imgBounds);
-  }
-
-  // Add event listeners to dropdowns
-  document.getElementById('yearSelect').addEventListener('change', updateOverlay);
-  document.getElementById('quarterSelect').addEventListener('change', updateOverlay);
-  document.getElementById('indexSelect').addEventListener('change', updateOverlay);
+  }).addTo(map);
 </script>
 </body>
 </html>
